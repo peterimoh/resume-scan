@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Personal data & generated artifacts
+resume.json
+resume.db
+*.pdf
+resume.tex
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store

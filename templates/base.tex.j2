@@ -1,0 +1,146 @@
+<%- block preamble -%>
+\documentclass[10pt,letterpaper]{article}
+
+% ATS-friendly layout: single column, standard fonts, no tables/graphics.
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.6in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+<%- endblock preamble -%>
+
+<%- block styling -%>
+\definecolor{accent}{HTML}{1F3864}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\pagestyle{empty}
+
+% Compact bullet list (no external list packages required).
+\newenvironment{resitemize}{%
+  \begin{itemize}
+    \setlength{\itemsep}{0pt}
+    \setlength{\parsep}{0pt}
+    \setlength{\topsep}{0pt}
+    \setlength{\partopsep}{0pt}
+    \setlength{\leftmargin}{1.4em}
+}{%
+  \end{itemize}
+}
+
+\newcommand{\ressection}[1]{%
+  \vspace{12pt}%
+  {\large\bfseries\color{accent} #1}\par
+  \vspace{1pt}\hrule\vspace{6pt}%
+}
+
+\newcommand{\entryheader}[2]{%
+  \textbf{#1}\hfill\textit{#2}\par}
+<%- endblock styling -%>
+
+\begin{document}
+
+\begin{center}
+<% if name %>
+  {\Huge\bfseries << name|tex >>}\\[4pt]
+<% endif %>
+<% if headline %>
+  {\large << headline|tex >>}\\[6pt]
+<% endif %>
+<% if contact_line %>
+  {\small << contact_line|safe >>}
+<% endif %>
+\end{center}
+
+<% if sections['profile'] and profile %>
+\ressection{<< section_labels['profile']|tex >>}
+<< profile|tex >>
+<% endif %>
+
+<% if sections['skills'] and skills %>
+\ressection{<< section_labels['skills']|tex >>}
+\begin{resitemize}
+<% for g in skills %>
+  \item \textbf{<< g.group|tex >>:} << g['items']|tex >>
+<% endfor %>
+\end{resitemize}
+<% endif %>
+
+<% if sections['experience'] and experience %>
+\ressection{<< section_labels['experience']|tex >>}
+<% for e in experience %>
+\entryheader{<< e.role|tex >> \textemdash{} << e.company|tex >>}{<< e.type|tex >> \hfill << e.dates|tex >>}
+<% if e.highlights %>
+\begin{resitemize}
+<% for h in e.highlights %>
+  \item << h|tex >>
+<% endfor %>
+\end{resitemize}
+<% endif %>
+<% endfor %>
+<% endif %>
+
+<% if sections['impact'] and impact %>
+\ressection{<< section_labels['impact']|tex >>}
+\begin{resitemize}
+<% for i in impact %>
+  \item \textbf{<< i.lead|tex >>:} << i.text|tex >>
+<% endfor %>
+\end{resitemize}
+<% endif %>
+
+<% if sections['leadership'] and leadership %>
+\ressection{<< section_labels['leadership']|tex >>}
+<% for l in leadership %>
+\entryheader{<< l.role|tex >> \textemdash{} << l.org|tex >>}{<< l.dates|tex >>}
+<< l.description|tex >>
+<% endfor %>
+<% endif %>
+
+<% if sections['education'] and education %>
+\ressection{<< section_labels['education']|tex >>}
+<% for ed in education %>
+\entryheader{<< ed.degree|tex >>}{<< ed.year|tex >>}
+<< ed.school|tex >>
+<% endfor %>
+<% endif %>
+
+<% if sections['certifications'] and certifications %>
+\ressection{<< section_labels['certifications']|tex >>}
+\begin{resitemize}
+<% for c in certifications %>
+  \item << c|tex >>
+<% endfor %>
+\end{resitemize}
+<% endif %>
+
+<% if sections['capabilities'] and capabilities %>
+\ressection{<< section_labels['capabilities']|tex >>}
+\begin{resitemize}
+<% for g in capabilities %>
+  \item \textbf{<< g.group|tex >>:} << g['items']|tex >>
+<% endfor %>
+\end{resitemize}
+<% endif %>
+
+<% if sections['career_progression'] and career_progression %>
+\ressection{<< section_labels['career_progression']|tex >>}
+<< career_progression|tex >>
+<% endif %>
+
+<% if sections['professional_profile'] and professional_profile %>
+\ressection{<< section_labels['professional_profile']|tex >>}
+<< professional_profile|tex >>
+<% endif %>
+
+<% if sections['technology_index'] and technology_index %>
+\ressection{<< section_labels['technology_index']|tex >>}
+<< technology_index_joined|safe >>
+<% endif %>
+
+<% if sections['references'] and references %>
+\ressection{<< section_labels['references']|tex >>}
+<< references|tex >>
+<% endif %>
+
+\end{document}

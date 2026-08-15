@@ -1,0 +1,36 @@
+<% extends "base.tex.j2" %>
+
+<% block preamble %>
+\documentclass[9pt,letterpaper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+<< font_preamble|safe >>
+\usepackage[margin=0.45in]{geometry}
+\usepackage[hidelinks]{hyperref}
+<% endblock preamble %>
+
+<% block styling %>
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\pagestyle{empty}
+
+\newenvironment{resitemize}{%
+  \begin{itemize}
+    \setlength{\itemsep}{0pt}
+    \setlength{\parsep}{0pt}
+    \setlength{\topsep}{0pt}
+    \setlength{\partopsep}{0pt}
+    \setlength{\leftmargin}{1.2em}
+}{%
+  \end{itemize}
+}
+
+\newcommand{\ressection}[1]{%
+  \vspace{8pt}%
+  {\normalsize\bfseries\MakeUppercase{#1}}\par
+  \vspace{1pt}\hrule\vspace{4pt}%
+}
+
+\newcommand{\entryheader}[2]{%
+  \textbf{#1}\hfill\textit{#2}\par}
+<% endblock styling %>
