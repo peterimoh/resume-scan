@@ -327,6 +327,25 @@ def _on_resume_change() -> None:
     st.session_state.font = r.get("font", DEFAULT_FONT)
 
 
+def _on_import_json() -> None:
+    uploaded = st.session_state.get("import_json")
+    if uploaded is None:
+        return
+    try:
+        raw = json.loads(uploaded.getvalue().decode("utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        st.session_state.import_error = f"Could not parse JSON: {exc}"
+        return
+    if not isinstance(raw, dict):
+        st.session_state.import_error = "Invalid resume.json: expected a JSON object."
+        return
+    st.session_state.import_error = None
+    data = _blank_data()
+    data.update(raw)
+    st.toast("Imported resume.json.")
+    _switch_resume(None, data, "classic", DEFAULT_FONT, None)
+
+
 def _open_analysis(mode: str, resume_id: int) -> None:
     st.session_state._pending = {
         "view": mode,
@@ -441,9 +460,20 @@ def _render_editor_sidebar() -> None:
             use_container_width=True,
         )
 
-    if st.button("Import resume.json", use_container_width=True):
-        _switch_resume(None, load_data() or _blank_data(), "classic", DEFAULT_FONT, None)
-        st.toast("Imported resume.json.")
+    st.divider()
+    st.header("Import")
+
+    st.file_uploader(
+        "Import resume.json",
+        type=["json"],
+        key="import_json",
+        on_change=_on_import_json,
+        help="Upload a resume JSON (e.g. one downloaded from the Library) "
+        "to load it into the editor.",
+    )
+    if st.session_state.get("import_error"):
+        st.error(st.session_state.import_error)
+        st.session_state.pop("import_error", None)
 
 
 def _save_current() -> None:
