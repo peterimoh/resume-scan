@@ -52,7 +52,7 @@ section[data-testid="stSidebar"] { width: 360px !important; }
     max-width: 1400px;
     height: 100vh;
     height: 100dvh;
-    padding: 1rem 1.5rem 1rem 1.5rem !important;
+    padding: 4.75rem 1.5rem 1rem 1.5rem !important;
     display: flex;
     flex-direction: column;
     overflow: hidden !important;
@@ -291,6 +291,16 @@ def _apply_pending() -> None:
             st.session_state[k] = v
 
 
+def _flash(message: str) -> None:
+    """Queue a toast to show on the next rerun.
+
+    ``st.toast`` is dropped when immediately followed by ``st.rerun()``, so
+    actions that rerun stash the message here and it is toasted at the top of
+    ``main()`` after the rerun.
+    """
+    st.session_state._flash = message
+
+
 def _switch_resume(resume_id, data, template, font, pdf) -> None:
     st.session_state._pending = {
         "resume_id": resume_id,
@@ -345,7 +355,7 @@ def _on_import_json() -> None:
     st.session_state.import_error = None
     data = _blank_data()
     data.update(raw)
-    st.toast("Imported resume.json.")
+    _flash("Imported resume.json.")
     _switch_resume(None, data, "classic", DEFAULT_FONT, None)
 
 
@@ -407,7 +417,7 @@ def _render_editor_sidebar() -> None:
         disabled=st.session_state.resume_id is None,
     ):
         db.delete_resume(st.session_state.resume_id)
-        st.toast("Resume deleted.")
+        _flash("Resume deleted.")
         _switch_resume(None, _blank_data(), "classic", DEFAULT_FONT, None)
 
     st.divider()
@@ -488,11 +498,11 @@ def _save_current() -> None:
 
     if rid is None:
         rid = db.create_resume(name, template, font, data)
-        st.toast("Saved as a new resume.")
+        _flash("Saved as a new resume.")
         _switch_resume(rid, data, template, font, st.session_state.pdf)
     else:
         db.update_resume(rid, name, template, font, data)
-        st.toast("Saved.")
+        _flash("Saved.")
         st.rerun()
 
 
@@ -746,7 +756,7 @@ def _render_library() -> None:
                 if st.session_state.resume_id == r["id"]:
                     _switch_resume(None, _blank_data(), "classic", DEFAULT_FONT, None)
                 else:
-                    st.toast("Resume deleted.")
+                    _flash("Resume deleted.")
                     st.rerun()
 
             if full.get("pdf"):
@@ -924,6 +934,11 @@ def main() -> None:
 
     _init_state()
     _apply_pending()
+
+    flash = st.session_state.pop("_flash", None)
+    if flash:
+        st.toast(flash)
+
     view = st.session_state.view
 
     if view == "Editor":
