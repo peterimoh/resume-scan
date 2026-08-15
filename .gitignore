@@ -1,5 +1,6 @@
 # Secrets
 .env
+.streamlit/secrets.toml
 
 # Personal data & generated artifacts
 resume.json

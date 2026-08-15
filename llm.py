@@ -43,7 +43,21 @@ _env = _load_env(ENV_PATH)
 
 
 def _cfg(name: str, default: str) -> str:
-    return _env.get(name, os.environ.get(name, default))
+    val = _env.get(name)
+    if val:
+        return val
+    val = os.environ.get(name)
+    if val:
+        return val
+    try:
+        import streamlit as st
+
+        secret = st.secrets.get(name)
+        if secret:
+            return secret
+    except Exception:
+        pass
+    return default
 
 
 API_KEY = _cfg("DEEPSEEK_API_KEY", "")

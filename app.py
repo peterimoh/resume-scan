@@ -7,7 +7,10 @@ Run with:
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -832,10 +835,82 @@ def _run_analysis(mode: str, resume_id: int, job: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+def _auth_credentials() -> dict[str, str]:
+    """Return username -> password pairs from Streamlit secrets or env vars."""
+    creds: dict[str, str] = {}
+    try:
+        auth = st.secrets.get("auth", {})
+        if hasattr(auth, "items"):
+            creds = {str(k): v for k, v in auth.items() if isinstance(v, str)}
+    except Exception:
+        pass
+    if not creds:
+        user = os.environ.get("AUTH_USERNAME")
+        password = os.environ.get("AUTH_PASSWORD")
+        if user and password:
+            creds = {user: password}
+    return creds
+
+
+def _check_password(candidate: str, stored: str) -> bool:
+    """Compare a candidate password against plaintext or a ``sha256$`` hash."""
+    if stored.startswith("sha256$"):
+        digest = hashlib.sha256(candidate.encode("utf-8")).hexdigest()
+        return hmac.compare_digest(digest, stored[len("sha256$"):])
+    return hmac.compare_digest(candidate, stored)
+
+
+def _render_auth_setup() -> None:
+    st.title("Resume Builder")
+    st.error("Authentication is not configured.")
+    st.markdown(
+        "This app requires a login. Configure credentials before sharing it.\n\n"
+        "Create `.streamlit/secrets.toml` locally (or use the Secrets manager "
+        "in Streamlit Cloud) with:\n\n"
+        "```toml\n"
+        "[auth]\n"
+        'username = "your-password"\n'
+        'DEEPSEEK_API_KEY = "sk-..."\n'
+        "```\n\n"
+        "Passwords may also be stored as a SHA-256 hash using the `sha256$` prefix."
+    )
+
+
+def _login_screen() -> None:
+    st.title("Resume Builder")
+    st.markdown("Sign in to continue.")
+
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Sign in", use_container_width=True)
+
+    if submitted:
+        creds = _auth_credentials()
+        if username in creds and _check_password(password, creds[username]):
+            st.session_state.authenticated = True
+            st.session_state.auth_user = username
+            st.rerun()
+        else:
+            st.error("Invalid username or password.")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    if not st.session_state.get("authenticated"):
+        creds = _auth_credentials()
+        if not creds:
+            _render_auth_setup()
+        else:
+            _login_screen()
+        return
+
     db.init_db()
 
     # Seed the database with the existing resume.json on first launch so the
@@ -862,6 +937,11 @@ def main() -> None:
             ["Editor", "Resume Library", "HR Analysis", "ATS Analysis"],
             key="view",
         )
+        st.divider()
+        st.caption(f"Signed in as {st.session_state.get('auth_user', '?')}")
+        if st.button("Sign out", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
 
     if view == "Editor":
         with st.sidebar:
