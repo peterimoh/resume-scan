@@ -12,6 +12,7 @@ import hmac
 import json
 import os
 import shutil
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -113,6 +114,17 @@ section[data-testid="stMain"] button[kind="primary"] {
 _SIDEBAR_CSS = """
 <style>
 section[data-testid="stSidebar"] { width: 360px !important; }
+</style>
+"""
+
+_LOGIN_CSS = """
+<style>
+.block-container {
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    padding-top: 4rem !important;
+}
 </style>
 """
 
@@ -873,6 +885,53 @@ def _check_password(candidate: str, stored: str) -> bool:
     return hmac.compare_digest(candidate, stored)
 
 
+# ---------------------------------------------------------------------------
+# Login persistence
+#
+# A signed token is stashed in a URL query param (not a cookie) so a page
+# refresh doesn't sign you out. Cookies would need to be set via a script
+# injected in a components.html iframe, which ad/tracker blockers such as
+# Brave Shields treat as a tracking pattern and silently drop — query params
+# are native to Streamlit and don't hit that.
+# ---------------------------------------------------------------------------
+
+_AUTH_QUERY_PARAM = "auth"
+_AUTH_TOKEN_MAX_AGE_DAYS = 30
+
+
+def _auth_secret(creds: dict[str, str]) -> bytes:
+    """Derive a signing key from the configured credentials.
+
+    Tied to the credentials themselves so that changing a password
+    invalidates any tokens issued under the old one.
+    """
+    material = "|".join(f"{u}:{p}" for u, p in sorted(creds.items()))
+    return hashlib.sha256(material.encode("utf-8")).digest()
+
+
+def _make_auth_token(username: str, creds: dict[str, str]) -> str:
+    expires = int(time.time()) + _AUTH_TOKEN_MAX_AGE_DAYS * 86400
+    payload = f"{username}:{expires}"
+    sig = hmac.new(_auth_secret(creds), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload}:{sig}"
+
+
+def _verify_auth_token(token: str, creds: dict[str, str]) -> str | None:
+    try:
+        username, expires_s, sig = token.split(":", 2)
+        expires = int(expires_s)
+    except (ValueError, AttributeError):
+        return None
+    if username not in creds or time.time() > expires:
+        return None
+    expected = hmac.new(
+        _auth_secret(creds), f"{username}:{expires}".encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return None
+    return username
+
+
 def _render_auth_setup() -> None:
     st.title("Resume Builder")
     st.error("Authentication is not configured.")
@@ -890,6 +949,7 @@ def _render_auth_setup() -> None:
 
 
 def _login_screen() -> None:
+    st.markdown(_LOGIN_CSS, unsafe_allow_html=True)
     st.title("Resume Builder")
     st.markdown("Sign in to continue.")
 
@@ -903,6 +963,7 @@ def _login_screen() -> None:
         if username in creds and _check_password(password, creds[username]):
             st.session_state.authenticated = True
             st.session_state.auth_user = username
+            st.query_params[_AUTH_QUERY_PARAM] = _make_auth_token(username, creds)
             st.rerun()
         else:
             st.error("Invalid username or password.")
@@ -917,9 +978,15 @@ def main() -> None:
         creds = _auth_credentials()
         if not creds:
             _render_auth_setup()
+            return
+        token = st.query_params.get(_AUTH_QUERY_PARAM)
+        username = _verify_auth_token(token, creds) if token else None
+        if username:
+            st.session_state.authenticated = True
+            st.session_state.auth_user = username
         else:
             _login_screen()
-        return
+            return
 
     db.init_db()
 
@@ -955,6 +1022,7 @@ def main() -> None:
         st.divider()
         st.caption(f"Signed in as {st.session_state.get('auth_user', '?')}")
         if st.button("Sign out", use_container_width=True):
+            st.query_params.pop(_AUTH_QUERY_PARAM, None)
             st.session_state.clear()
             st.rerun()
 
