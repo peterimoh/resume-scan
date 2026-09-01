@@ -287,7 +287,7 @@ def str_list_editor(title: str, items: list, key: str) -> list:
 def _init_state() -> None:
     if "view" in st.session_state:
         return
-    st.session_state.view = "Editor"
+    st.session_state.view = "Resume Library"
     st.session_state.preview_open = True
     st.session_state.pdf = None
 
