@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import time
+import uuid
 from pathlib import Path
 
 import streamlit as st
@@ -173,6 +174,20 @@ def _resume_title(data: dict) -> str:
     return (data.get("name") or "").strip() or "Untitled Resume"
 
 
+def _strip_uids(obj):
+    """Drop the internal ``_uid`` keys list_editor() attaches to entries.
+
+    Those ids only exist to give list entries a stable widget key across
+    reruns (so removing one entry doesn't scramble the others); they have no
+    business leaking into saved/exported resume data.
+    """
+    if isinstance(obj, dict):
+        return {k: _strip_uids(v) for k, v in obj.items() if k != "_uid"}
+    if isinstance(obj, list):
+        return [_strip_uids(v) for v in obj]
+    return obj
+
+
 @st.cache_data(show_spinner=False)
 def live_pages(template: str, font: str, serialized_data: str) -> list:
     """Compile the resume and return PNG bytes for every page (for live preview)."""
@@ -196,17 +211,26 @@ def list_editor(title: str, items: list, layout: list, key: str) -> list:
     """
     st.subheader(title)
 
+    # Give every entry a stable id so widget keys stay tied to the entry
+    # itself rather than its position — removing entry 1 must not make
+    # entry 2's fields inherit entry 1's stale widget state.
+    for item in items:
+        item.setdefault("_uid", uuid.uuid4().hex)
+
     edited = []
     for idx, item in enumerate(items):
+        uid = item["_uid"]
         with st.container(border=True):
             head = st.columns([0.9, 0.1])
             head[0].markdown(f"**Entry {idx + 1}**")
-            remove = head[1].checkbox(
-                "✕", key=f"{key}_rm_{idx}", label_visibility="collapsed",
-                help="Remove this entry",
-            )
+            if head[1].button(
+                "🗑️", key=f"{key}_rm_{uid}", help="Remove this entry",
+                use_container_width=True,
+            ):
+                items.remove(item)
+                st.rerun()
 
-            row = {}
+            row = {"_uid": uid}
             for fields in layout:
                 cols = st.columns(len(fields))
                 for f, col in zip(fields, cols):
@@ -215,32 +239,32 @@ def list_editor(title: str, items: list, layout: list, key: str) -> list:
                         text = col.text_area(
                             f"{f} (one per line)",
                             value="\n".join(item.get(f, [])),
-                            key=f"{key}_{idx}_{f}",
+                            key=f"{key}_{uid}_{f}",
                         )
                         row[f] = [ln.strip() for ln in text.splitlines() if ln.strip()]
                     elif f in ("items", "description", "text", "profile"):
                         row[f] = col.text_area(
-                            f.capitalize(), value=default, key=f"{key}_{idx}_{f}"
+                            f.capitalize(), value=default, key=f"{key}_{uid}_{f}"
                         )
                     else:
                         row[f] = col.text_input(
-                            f.capitalize(), value=default, key=f"{key}_{idx}_{f}"
+                            f.capitalize(), value=default, key=f"{key}_{uid}_{f}"
                         )
 
-            if not remove:
-                edited.append(row)
+            edited.append(row)
 
     st.caption(f"{len(edited)} entry(ies)")
 
     def blank() -> dict:
-        d = {}
+        d = {"_uid": uuid.uuid4().hex}
         for fields in layout:
             for f in fields:
                 d[f] = [] if f == "highlights" else ""
         return d
 
     if st.button(f"Add {title}", key=f"{key}_add_btn"):
-        edited.append(blank())
+        items.append(blank())
+        st.rerun()
 
     return edited
 
@@ -507,13 +531,14 @@ def _save_current() -> None:
     template = st.session_state.template
     font = st.session_state.font
     rid = st.session_state.resume_id
+    to_save = _strip_uids(data)
 
     if rid is None:
-        rid = db.create_resume(name, template, font, data)
+        rid = db.create_resume(name, template, font, to_save)
         _flash("Saved as a new resume.")
         _switch_resume(rid, data, template, font, st.session_state.pdf)
     else:
-        db.update_resume(rid, name, template, font, data)
+        db.update_resume(rid, name, template, font, to_save)
         _flash("Saved.")
         st.rerun()
 
@@ -754,7 +779,7 @@ def _render_library() -> None:
             row2 = st.columns([1, 1, 1])
             row2[0].download_button(
                 "JSON",
-                data=json.dumps(full["data"], indent=2, ensure_ascii=False),
+                data=json.dumps(_strip_uids(full["data"]), indent=2, ensure_ascii=False),
                 file_name=f"{fname}.json",
                 mime="application/json",
                 key=f"json_{r['id']}",
