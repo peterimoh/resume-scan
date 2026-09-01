@@ -1,11 +1,14 @@
-"""DeepSeek LLM integration for HR and ATS resume analysis.
+"""LLM integration for HR and ATS resume analysis.
+
+Talks to any OpenAI-compatible chat-completions API (DeepSeek, Z.ai/GLM,
+etc.) — switching providers is just a config change, no code change.
 
 Configuration is read from a ``.env`` file in the project directory (with
-environment variables as fallback):
+environment variables and Streamlit secrets as fallback):
 
-    DEEPSEEK_API_KEY=sk-...
-    DEEPSEEK_BASE_URL=https://api.deepseek.com
-    DEEPSEEK_MODEL=deepseek-chat
+    LLM_API_KEY=sk-...
+    LLM_BASE_URL=https://api.z.ai/api/paas/v4
+    LLM_MODEL=glm-4.7
 """
 
 from __future__ import annotations
@@ -60,20 +63,20 @@ def _cfg(name: str, default: str) -> str:
     return default
 
 
-API_KEY = _cfg("DEEPSEEK_API_KEY", "")
-BASE_URL = _cfg("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
-MODEL = _cfg("DEEPSEEK_MODEL", "deepseek-chat")
+API_KEY = _cfg("LLM_API_KEY", "")
+BASE_URL = _cfg("LLM_BASE_URL", "https://api.z.ai/api/paas/v4").rstrip("/")
+MODEL = _cfg("LLM_MODEL", "glm-4.7")
 
 
 def _chat_stream(messages: list[dict], temperature: float = 0.2):
-    """Yield completion deltas from the DeepSeek chat API (server-sent events).
+    """Yield completion deltas from the chat API (server-sent events).
 
     Retries transient failures (429/5xx/connection errors) a few times, then
     raises if it still cannot get a response.
     """
     if not API_KEY:
         raise RuntimeError(
-            "DEEPSEEK_API_KEY is not set. Add it to the .env file in this directory."
+            "LLM_API_KEY is not set. Add it to the .env file in this directory."
         )
 
     headers = {
@@ -104,7 +107,7 @@ def _chat_stream(messages: list[dict], temperature: float = 0.2):
             continue
 
         if resp.status_code in (429, 500, 502, 503, 504):
-            last_error = RuntimeError(f"DeepSeek API returned {resp.status_code}.")
+            last_error = RuntimeError(f"LLM API returned {resp.status_code}.")
             resp.close()
             time.sleep(2 ** attempt)
             continue
@@ -112,7 +115,7 @@ def _chat_stream(messages: list[dict], temperature: float = 0.2):
         if resp.status_code != 200:
             body = resp.text[:500]
             resp.close()
-            raise RuntimeError(f"DeepSeek API returned {resp.status_code}: {body}")
+            raise RuntimeError(f"LLM API returned {resp.status_code}: {body}")
 
         truncated = False
         try:
@@ -148,7 +151,7 @@ def _chat_stream(messages: list[dict], temperature: float = 0.2):
             yield "\n\n> Note: the response was truncated (output limit reached)."
         return
 
-    raise RuntimeError(f"DeepSeek request failed after retries: {last_error}")
+    raise RuntimeError(f"LLM request failed after retries: {last_error}")
 
 
 _HR_SYSTEM = (

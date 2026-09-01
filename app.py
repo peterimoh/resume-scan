@@ -808,7 +808,8 @@ def _render_analysis(mode: str) -> None:
     )
 
     if st.button(f"Run {mode}", type="primary"):
-        _run_analysis(mode, st.session_state.analysis_resume_id, job)
+        with st.spinner(f"Running {mode}… this can take a moment."):
+            _run_analysis(mode, st.session_state.analysis_resume_id, job)
 
     fresh = st.session_state.pop("_analysis_fresh", False)
     result = st.session_state.get("analysis_result")
@@ -942,7 +943,7 @@ def _render_auth_setup() -> None:
         "```toml\n"
         "[auth]\n"
         'username = "your-password"\n'
-        'DEEPSEEK_API_KEY = "sk-..."\n'
+        'LLM_API_KEY = "sk-..."\n'
         "```\n\n"
         "Passwords may also be stored as a SHA-256 hash using the `sha256$` prefix."
     )
