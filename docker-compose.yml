@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      DB_PATH: /app/data/resume.db
+    volumes:
+      - resume-data:/app/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?set VITE_API_BASE_URL in a .env file next to this compose file, e.g. https://api.resume.yourdomain.com}
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+volumes:
+  resume-data:
