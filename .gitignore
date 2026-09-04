@@ -1,10 +1,11 @@
 # Secrets
 .env
-.streamlit/secrets.toml
+.env.production
 
 # Personal data & generated artifacts
 resume.json
 resume.db
+resume.db-*
 *.pdf
 resume.tex
 
@@ -16,5 +17,16 @@ __pycache__/
 venv/
 env/
 
+# Node / frontend
+node_modules/
+dist/
+
 # OS
-.DS_Store
+.DS_Store¯¯˘
+backend/.DS_Store¯¯
+frontend/.DS_Store¯¯
+
+automation
+backend/.env
+frontend/.env
+Archive.zip

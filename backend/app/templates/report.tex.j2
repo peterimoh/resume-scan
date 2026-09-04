@@ -1,0 +1,62 @@
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.75in]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{longtable}
+\usepackage{booktabs}
+
+\definecolor{rptaccent}{HTML}{1F3864}
+\definecolor{rptsuccess}{HTML}{15803D}
+\definecolor{rptwarning}{HTML}{B45309}
+\definecolor{rptdanger}{HTML}{B91C1C}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.2}
+\pagestyle{empty}
+
+% Compact list environments (no enumitem — keep the same "no external list
+% packages" convention as the resume templates' resitemize).
+\newenvironment{reportitemize}{%
+  \begin{itemize}
+    \setlength{\itemsep}{3pt}
+    \setlength{\parsep}{0pt}
+    \setlength{\topsep}{3pt}
+    \setlength{\leftmargin}{1.4em}
+}{%
+  \end{itemize}
+}
+
+\newenvironment{reportenumerate}{%
+  \begin{enumerate}
+    \setlength{\itemsep}{3pt}
+    \setlength{\parsep}{0pt}
+    \setlength{\topsep}{3pt}
+    \setlength{\leftmargin}{1.6em}
+}{%
+  \end{enumerate}
+}
+
+\begin{document}
+
+{\Huge\bfseries\color{rptaccent} << title|tex >>}\\[2pt]
+{\large << subtitle|tex >>}\\[6pt]
+{\small\color{black!55} << meta_line|safe >>}
+
+<% if chart_tex %>
+\vspace{14pt}
+<< chart_tex|safe >>
+<% endif %>
+
+\vspace{6pt}
+{\LARGE\bfseries\color{rptaccent} Full Report}\par
+\vspace{2pt}\noindent\rule{\linewidth}{0.6pt}\vspace{10pt}
+
+<< body_tex|safe >>
+
+\end{document}
